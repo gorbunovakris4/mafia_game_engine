@@ -1,0 +1,90 @@
+syntax = "proto3";
+
+
+message ConnectRequest {
+  string name = 1;
+}
+
+message ConnectResult {
+  int32 game_id = 2;
+}
+
+message DisconnectRequest {
+  string name = 1;
+  int32 game_id = 2;
+}
+
+message Status {
+  string status = 1;
+  repeated string players = 2;
+}
+
+message StatusRequest {
+  string name = 1;
+  int32 game_id = 2;
+}
+
+message RoleRequest {
+  string name = 1;
+  int32 game_id = 2;
+}
+
+message Role {
+  string role = 1;
+}
+
+message TimeRequest {
+  string name = 1;
+  int32 game_id = 2;
+}
+
+message Time {
+  string time = 1;
+}
+
+message GameInfoRequest {
+  string name = 1;
+  int32 game_id = 2;
+}
+
+message GameInfo {
+  bool game_is_on = 1;
+  int32 status = 2;
+  string time = 3;
+}
+
+message ActionRequest {
+  string from_name = 1;
+  string action = 2;
+  string to_name = 3;
+  int32 game_id = 4;
+}
+
+message ActionResult {
+  bool is_legal = 1;
+  string result = 2;
+}
+
+message HistoryRequest {
+  string name = 1;
+  int32 game_id = 2;
+}
+
+message History {
+  repeated string moves = 1;
+}
+
+
+// A simple key-value store service.
+service Mafia {
+  rpc Connect(ConnectRequest) returns (ConnectResult) {}
+  rpc Disconnect(DisconnectRequest) returns (DisconnectRequest) {}
+  rpc GetStatus(StatusRequest) returns (Status) {}
+
+  rpc GetRole(RoleRequest) returns (Role) {}
+  rpc GetTime(TimeRequest) returns (Time) {}
+  rpc GetGameInfo(GameInfoRequest) returns (GameInfo) {}
+  rpc CreateAction(ActionRequest) returns (ActionResult) {}
+  rpc GetHistory(HistoryRequest) returns (History) {}
+
+}
