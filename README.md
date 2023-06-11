@@ -10,9 +10,17 @@ Server and bot-client for mafia based on grpc.
 
 ```bash
 pip install -r /server/requirements.txt
-
+pip install grpcio
+pip install grpcio-tools
+pip install googleapis-common-protos
+pip install grpcio-status
+```
+```bash
 python3 server/server.py
+```
+And at least 4 times: 
 
+```bash
 python3 client/client.py
 ```
 
