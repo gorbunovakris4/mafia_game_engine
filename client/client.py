@@ -81,7 +81,7 @@ def start_game(players, game_id, connection_string):
     print("Entering session...")
     print("Connected players are:\n\t", "\n\t".join(players), sep="")
     connected = True
-    with grpc.insecure_channel(connection_string) as channel:
+    with grpc.insecure_channel(connection_string, options=(('grpc.enable_http_proxy', 0),)) as channel:
         stub = mafia_pb2_grpc.MafiaStub(channel)
         response = stub.GetRole(mafia_pb2.RoleRequest(name=name, game_id=game_id))
     print(f"you are {response.role}")
@@ -94,7 +94,7 @@ def start_game(players, game_id, connection_string):
                 action = ""
                 while action != "end" and player.alive:
                     from_player, action, to_player = player.make_action()
-                    with grpc.insecure_channel(connection_string) as channel:
+                    with grpc.insecure_channel(connection_string, options=(('grpc.enable_http_proxy', 0),)) as channel:
                         stub = mafia_pb2_grpc.MafiaStub(channel)
                         response = stub.CreateAction(
                             mafia_pb2.ActionRequest(from_name=from_player, action=action, to_name=to_player,
@@ -102,7 +102,7 @@ def start_game(players, game_id, connection_string):
                     if response.is_legal:
                         print("YOUR MOVE:\t", response.result, sep="")
                     time.sleep(5)
-                    with grpc.insecure_channel(connection_string) as channel:
+                    with grpc.insecure_channel(connection_string, options=(('grpc.enable_http_proxy', 0),)) as channel:
                         stub = mafia_pb2_grpc.MafiaStub(channel)
                         response = stub.GetHistory(mafia_pb2.HistoryRequest(name=name, game_id=game_id))
                     for move in response.moves:
@@ -120,7 +120,7 @@ def start_game(players, game_id, connection_string):
             else:
                 print("you are dead :( can only observe the game")
                 time.sleep(5)
-                with grpc.insecure_channel(connection_string) as channel:
+                with grpc.insecure_channel(connection_string, options=(('grpc.enable_http_proxy', 0),)) as channel:
                     stub = mafia_pb2_grpc.MafiaStub(channel)
                     response = stub.GetHistory(mafia_pb2.HistoryRequest(name=name, game_id=game_id))
                 for move in response.moves:
@@ -138,42 +138,72 @@ def start_game(players, game_id, connection_string):
 
             day_time = "day"
             while day_time == "day":
-                with grpc.insecure_channel(connection_string) as channel:
+                with grpc.insecure_channel(connection_string, options=(('grpc.enable_http_proxy', 0),)) as channel:
                     stub = mafia_pb2_grpc.MafiaStub(channel)
                     response = stub.GetGameInfo(mafia_pb2.GameInfoRequest(name=name, game_id=game_id))
                     day_time = response.time
                     game_is_on = response.game_is_on
                     status = response.status
-                    if not game_is_on:
+                    if not game_is_on and status == 0:
                         print("sorry, game is interrupted")
                         print("Reconnect...")
-                        with grpc.insecure_channel(connection_string) as channel:
+                        with grpc.insecure_channel(connection_string, options=(('grpc.enable_http_proxy', 0),)) as channel:
                             stub = mafia_pb2_grpc.MafiaStub(channel)
                             response = stub.Disconnect(mafia_pb2.DisconnectRequest(name=name, game_id=game_id))
                         connected = False
                         time.sleep(10)
                         run(connection_string)
                     elif status == 1:
+                        with grpc.insecure_channel(connection_string,
+                                                   options=(('grpc.enable_http_proxy', 0),)) as channel:
+                            stub = mafia_pb2_grpc.MafiaStub(channel)
+                            response = stub.GetHistory(mafia_pb2.HistoryRequest(name=name, game_id=game_id))
+                        for move in response.moves:
+                            initiator = move.split()[0]
+                            if initiator == name:
+                                continue
+                            elif initiator == "mafia":
+                                victim = move.split()[2]
+                                if victim == name:
+                                    player.alive = False
+                                else:
+                                    player.alive_players.remove(victim)
+                            print(initiator.capitalize(), " MOVE:\t", move, sep="")
                         print("citizens won! mafia is killed by voting")
                         time.sleep(10)
-                        print("you can continue playing")
-                        with grpc.insecure_channel(connection_string) as channel:
+                        print("you can continue playing. Automatically in 100 secs")
+                        with grpc.insecure_channel(connection_string, options=(('grpc.enable_http_proxy', 0),)) as channel:
                             stub = mafia_pb2_grpc.MafiaStub(channel)
                             response = stub.Disconnect(mafia_pb2.DisconnectRequest(name=name, game_id=game_id))
                         connected = False
                         time.sleep(100)
                         run(connection_string)
                     elif status == -1:
+                        with grpc.insecure_channel(connection_string,
+                                                   options=(('grpc.enable_http_proxy', 0),)) as channel:
+                            stub = mafia_pb2_grpc.MafiaStub(channel)
+                            response = stub.GetHistory(mafia_pb2.HistoryRequest(name=name, game_id=game_id))
+                        for move in response.moves:
+                            initiator = move.split()[0]
+                            if initiator == name:
+                                continue
+                            elif initiator == "mafia":
+                                victim = move.split()[2]
+                                if victim == name:
+                                    player.alive = False
+                                else:
+                                    player.alive_players.remove(victim)
+                            print(initiator.capitalize(), " MOVE:\t", move, sep="")
                         print("mafia won! only 1 citizen is still alive")
                         time.sleep(10)
-                        print("you can continue playing")
-                        with grpc.insecure_channel(connection_string) as channel:
+                        print("you can continue playing. Automatically in 100 secs")
+                        with grpc.insecure_channel(connection_string, options=(('grpc.enable_http_proxy', 0),)) as channel:
                             stub = mafia_pb2_grpc.MafiaStub(channel)
                             response = stub.Disconnect(mafia_pb2.DisconnectRequest(name=name, game_id=game_id))
                         connected = False
                         time.sleep(100)
                         run(connection_string)
-            with grpc.insecure_channel(connection_string) as channel:
+            with grpc.insecure_channel(connection_string, options=(('grpc.enable_http_proxy', 0),)) as channel:
                 stub = mafia_pb2_grpc.MafiaStub(channel)
                 response = stub.GetHistory(mafia_pb2.HistoryRequest(name=name, game_id=game_id))
             for move in response.moves:
@@ -193,33 +223,61 @@ def start_game(players, game_id, connection_string):
                 print(initiator.capitalize(), " MOVE:\t", move, sep="")
             print(f"day {player.day_num} ends")
             time.sleep(8)
-            with grpc.insecure_channel(connection_string) as channel:
+            with grpc.insecure_channel(connection_string, options=(('grpc.enable_http_proxy', 0),)) as channel:
                 stub = mafia_pb2_grpc.MafiaStub(channel)
                 response = stub.GetGameInfo(mafia_pb2.GameInfoRequest(name=name, game_id=game_id))
                 day_time = response.time
                 game_is_on = response.game_is_on
                 status = response.status
-                if not game_is_on:
+                if not game_is_on and status == 0:
                     print("sorry, game is interrupted")
-                    with grpc.insecure_channel(connection_string) as channel:
+                    with grpc.insecure_channel(connection_string, options=(('grpc.enable_http_proxy', 0),)) as channel:
                         stub = mafia_pb2_grpc.MafiaStub(channel)
                         response = stub.Disconnect(mafia_pb2.DisconnectRequest(name=name, game_id=game_id))
                     connected = False
                     time.sleep(100)
                     run(connection_string)
                 elif status == 1:
+                    with grpc.insecure_channel(connection_string, options=(('grpc.enable_http_proxy', 0),)) as channel:
+                        stub = mafia_pb2_grpc.MafiaStub(channel)
+                        response = stub.GetHistory(mafia_pb2.HistoryRequest(name=name, game_id=game_id))
+                    for move in response.moves:
+                        initiator = move.split()[0]
+                        if initiator == name:
+                            continue
+                        elif initiator == "mafia":
+                            victim = move.split()[2]
+                            if victim == name:
+                                player.alive = False
+                            else:
+                                player.alive_players.remove(victim)
+                        print(initiator.capitalize(), " MOVE:\t", move, sep="")
                     print("citizens won! mafia is killed by voting")
                     time.sleep(10)
-                    with grpc.insecure_channel(connection_string) as channel:
+                    with grpc.insecure_channel(connection_string, options=(('grpc.enable_http_proxy', 0),)) as channel:
                         stub = mafia_pb2_grpc.MafiaStub(channel)
                         response = stub.Disconnect(mafia_pb2.DisconnectRequest(name=name, game_id=game_id))
                     connected = False
                     time.sleep(100)
                     run(connection_string)
                 elif status == -1:
+                    with grpc.insecure_channel(connection_string, options=(('grpc.enable_http_proxy', 0),)) as channel:
+                        stub = mafia_pb2_grpc.MafiaStub(channel)
+                        response = stub.GetHistory(mafia_pb2.HistoryRequest(name=name, game_id=game_id))
+                    for move in response.moves:
+                        initiator = move.split()[0]
+                        if initiator == name:
+                            continue
+                        elif initiator == "mafia":
+                            victim = move.split()[2]
+                            if victim == name:
+                                player.alive = False
+                            else:
+                                player.alive_players.remove(victim)
+                        print(initiator.capitalize(), " MOVE:\t", move, sep="")
                     print("mafia won! only 1 citizen is still alive")
                     time.sleep(10)
-                    with grpc.insecure_channel(connection_string) as channel:
+                    with grpc.insecure_channel(connection_string, options=(('grpc.enable_http_proxy', 0),)) as channel:
                         stub = mafia_pb2_grpc.MafiaStub(channel)
                         response = stub.Disconnect(mafia_pb2.DisconnectRequest(name=name, game_id=game_id))
                     connected = False
@@ -230,7 +288,7 @@ def start_game(players, game_id, connection_string):
             time.sleep(5)
             if player.role == "mafia" and player.alive:
                 from_player, action, to_player = player.make_action()
-                with grpc.insecure_channel(connection_string) as channel:
+                with grpc.insecure_channel(connection_string, options=(('grpc.enable_http_proxy', 0),)) as channel:
                     stub = mafia_pb2_grpc.MafiaStub(channel)
                     response = stub.CreateAction(
                         mafia_pb2.ActionRequest(from_name=from_player, action=action, to_name=to_player,
@@ -240,7 +298,7 @@ def start_game(players, game_id, connection_string):
                 time.sleep(8)
             elif player.role == "detective" and player.alive and not player.guessed_mafia:
                 from_player, action, to_player = player.make_action()
-                with grpc.insecure_channel(connection_string) as channel:
+                with grpc.insecure_channel(connection_string, options=(('grpc.enable_http_proxy', 0),)) as channel:
                     stub = mafia_pb2_grpc.MafiaStub(channel)
                     try:
                         response = stub.CreateAction(
@@ -263,11 +321,11 @@ def start_game(players, game_id, connection_string):
                             time.sleep(3)
             day_time = "night"
             while day_time == "night":
-                with grpc.insecure_channel(connection_string) as channel:
+                with grpc.insecure_channel(connection_string, options=(('grpc.enable_http_proxy', 0),)) as channel:
                     stub = mafia_pb2_grpc.MafiaStub(channel)
                     response = stub.GetTime(mafia_pb2.TimeRequest(name=name, game_id=game_id))
                     day_time = response.time
-            with grpc.insecure_channel(connection_string) as channel:
+            with grpc.insecure_channel(connection_string, options=(('grpc.enable_http_proxy', 0),)) as channel:
                 stub = mafia_pb2_grpc.MafiaStub(channel)
                 response = stub.GetHistory(mafia_pb2.HistoryRequest(name=name, game_id=game_id))
             for move in response.moves:
@@ -287,7 +345,7 @@ def start_game(players, game_id, connection_string):
                     else:
                         player.alive_players.remove(victim)
                 print(initiator.capitalize(), " MOVE:\t", move, sep="")
-            with grpc.insecure_channel(connection_string) as channel:
+            with grpc.insecure_channel(connection_string, options=(('grpc.enable_http_proxy', 0),)) as channel:
                 stub = mafia_pb2_grpc.MafiaStub(channel)
                 response = stub.GetGameInfo(mafia_pb2.GameInfoRequest(name=name, game_id=game_id))
                 day_time = response.time
@@ -296,7 +354,7 @@ def start_game(players, game_id, connection_string):
                 if not game_is_on:
                     print("sorry, game is interrupted")
                     print("Reconnect...")
-                    with grpc.insecure_channel(connection_string) as channel:
+                    with grpc.insecure_channel(connection_string, options=(('grpc.enable_http_proxy', 0),)) as channel:
                         stub = mafia_pb2_grpc.MafiaStub(channel)
                         response = stub.Disconnect(mafia_pb2.DisconnectRequest(name=name, game_id=game_id))
                     connected = False
@@ -305,8 +363,8 @@ def start_game(players, game_id, connection_string):
                 elif status == 1:
                     print("citizens won! mafia is killed by voting")
                     time.sleep(10)
-                    print("you can continue playing")
-                    with grpc.insecure_channel(connection_string) as channel:
+                    print("you can continue playing. Automatically in 100 secs")
+                    with grpc.insecure_channel(connection_string, options=(('grpc.enable_http_proxy', 0),)) as channel:
                         stub = mafia_pb2_grpc.MafiaStub(channel)
                         response = stub.Disconnect(mafia_pb2.DisconnectRequest(name=name, game_id=game_id))
                     connected = False
@@ -315,8 +373,8 @@ def start_game(players, game_id, connection_string):
                 elif status == -1:
                     print("mafia won! only 1 citizen is still alive")
                     time.sleep(10)
-                    print("you can continue playing")
-                    with grpc.insecure_channel(connection_string) as channel:
+                    print("you can continue playing. Automatically in 100 secs")
+                    with grpc.insecure_channel(connection_string, options=(('grpc.enable_http_proxy', 0),)) as channel:
                         stub = mafia_pb2_grpc.MafiaStub(channel)
                         response = stub.Disconnect(mafia_pb2.DisconnectRequest(name=name, game_id=game_id))
                     connected = False
@@ -326,7 +384,7 @@ def start_game(players, game_id, connection_string):
             time.sleep(5)
     except KeyboardInterrupt:
         if connected:
-            with grpc.insecure_channel(connection_string) as channel:
+            with grpc.insecure_channel(connection_string, options=(('grpc.enable_http_proxy', 0),)) as channel:
                 stub = mafia_pb2_grpc.MafiaStub(channel)
                 response = stub.Disconnect(mafia_pb2.DisconnectRequest(name=name, game_id=game_id))
         logging.info("Terminating client.")
@@ -339,7 +397,7 @@ def run(connection_string):
     game_id = None
     while not in_game:
         print("Connecting...")
-        with grpc.insecure_channel(connection_string) as channel:
+        with grpc.insecure_channel(connection_string, options=(('grpc.enable_http_proxy', 0),)) as channel:
             stub = mafia_pb2_grpc.MafiaStub(channel)
             try:
                 response = stub.Connect(mafia_pb2.ConnectRequest(name=name))
@@ -353,7 +411,7 @@ def run(connection_string):
     try:
         while True:
             time.sleep(10)
-            with grpc.insecure_channel(connection_string) as channel:
+            with grpc.insecure_channel(connection_string, options=(('grpc.enable_http_proxy', 0),)) as channel:
                 stub = mafia_pb2_grpc.MafiaStub(channel)
                 response = stub.GetStatus(mafia_pb2.StatusRequest(name=name, game_id=game_id))
 
@@ -364,7 +422,7 @@ def run(connection_string):
                 print("Connected players are:\n\t", "\n\t".join(response.players), sep="")
     except KeyboardInterrupt:
         if in_game:
-            with grpc.insecure_channel(connection_string) as channel:
+            with grpc.insecure_channel(connection_string, options=(('grpc.enable_http_proxy', 0),)) as channel:
                 stub = mafia_pb2_grpc.MafiaStub(channel)
                 response = stub.Disconnect(mafia_pb2.DisconnectRequest(name=name, game_id=game_id))
         logging.info("Terminating client.")
