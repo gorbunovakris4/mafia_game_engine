@@ -6,11 +6,5 @@ services:
     restart: unless-stopped
     environment:
       PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION: python
-    expose:
-      - 50051/udp
-      - 50051
     ports:
       - 50051:50051
-      - 50051:50051/udp
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
