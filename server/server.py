@@ -158,6 +158,7 @@ class GameEngine:
             self.voting = None
             self.history = []
             self.notified = {}
+            self.free_roles = ["mafia", "detective", "citizen", "citizen"]
 
     def new_day(self):
         lock = threading.Lock()
@@ -266,7 +267,7 @@ class GameEngine:
                         return True, f"detective found mafia this night"
                     else:
                         self.history.append(f"detective missed this night")
-                        return False, f"detective missed this night"
+                        return True, f"detective missed this night"
             elif from_player_role != "detective":
                 return False, "you cannot check"
             else:
@@ -465,9 +466,9 @@ def _await_termination(server):
 
 
 def _run_server_non_blocking(host, port):
-    server = grpc.server(concurrent.futures.ThreadPoolExecutor())
+    server = grpc.server(concurrent.futures.ThreadPoolExecutor(max_workers=10))
     mafia_pb2_grpc.add_MafiaServicer_to_server(MafiaServer(), server)
-    actual_port = server.add_insecure_port('{}:{}'.format(host, port))
+    actual_port = server.add_insecure_port('[::]:' + str(port))
     logging.info("Server listening at {}:{}".format(host, actual_port))
     server.start()
     return server, actual_port
