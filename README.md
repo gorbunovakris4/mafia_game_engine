@@ -24,7 +24,7 @@ And at least 4 times:
 python3 client/client.py
 ```
 
-When there are 4 client, game will start. Moves are made automatically
+When there are 4 clients, game will start. Moves are made automatically. Several sessions can be run simultaneously.
 
 ### 1. CLient name and host
 
